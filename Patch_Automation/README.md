@@ -20,11 +20,11 @@ Add preferences with __defaults write__ to a preference file in ~/Library/Prefer
 * note that preferences will also be pulled from an autopkg preference file as well for Jamf servers
 Required keys:
 * "JSS_URL"
-  * Will be pulled from com.github.autopkg preference file and does not need to be in both
+  * Can be pulled from com.github.autopkg preference file and does not need to be in both. If this is in both preference files, the value in com.github.patch.automation will take precedence.
 * "API_USERNAME"
-  * Will be pulled from com.github.autopkg preference file and does not need to be in both
+  * Can be pulled from com.github.autopkg preference file and does not need to be in both. If this is in both preference files, the value in com.github.patch.automation will take precedence.
 * "API_PASSWORD"
-  * Will be pulled from com.github.autopkg preference file and does not need to be in both
+  * Can be pulled from com.github.autopkg preference file and does not need to be in both. If this is in both preference files, the value in com.github.patch.automation will take precedence.
 * "PATCH_REPO"
   * This is the github repo for your JSON files related to patch. If these do not live in github, this location is still needed but the github commands will likely show up as failures in the log
 * "PATCH_URL"
