@@ -202,6 +202,9 @@ def UpdatePatchserver(updSftwreDict, log):
     userPrefs = AutomationPreferences("PATCH_REPO", "PATCH_URL", "PATCH_TOKEN")
     gitRepo = userPrefs["PATCH_REPO"]
     patchURL = userPrefs["PATCH_URL"]
+    # Make sure the endpoint is pointing to the correct URL for updating
+    if "/api/v1/title" not in patchURL:
+        patchURL = patchURL + "/api/v1/title"
     apiToken = userPrefs["PATCH_TOKEN"]
     GithubActions(gitRepo)
     for software in updSftwreDict:
