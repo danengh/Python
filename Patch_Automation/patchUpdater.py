@@ -166,8 +166,8 @@ def GetPackageName(APIEndpoint, apiUser, apiPass, softwareIDList):
 # Function to get and create, if needed, the log file path and location.
 def GetFileLocation():
     currentUser = getuser()
-    umnPath = pathlib.Path("/Users/" + currentUser + "/Library/UMN")
-    logPath = umnPath / "Logs"
+    umnPath = pathlib.Path("/Users/" + currentUser + "/Library")
+    logPath = umnPath / "Logs/Patch_Automation"
     if not umnPath.exists():
         os.mkdir(umnPath)
     return logPath
@@ -195,6 +195,13 @@ def GithubActions(patchRepo, commit=None):
             logFile,
             "Github folder for Jamf Patch files does not exist. Github update failed",
         )
+
+
+def GetPreferences(*args):
+    userPrefs = {}
+    for key in args:
+        userPrefs += AutomationPreferences(key)
+    return userPrefs
 
 
 # Updates the patch server with the updated JSON definition.
