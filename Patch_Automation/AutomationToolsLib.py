@@ -109,18 +109,19 @@ def AutomationPreferences(*args):
             "No preferences found. Please add them to one of the following preferences files: "
         )
         Logging(
-            "No preferences found. Please add them to one of the following preferences files: "
+            logFile,
+            "No preferences found. Please add them to one of the following preferences files: ",
         )
         print(userPrefFile)
         print(autopkgPrefFile)
         Logging(logFile, userPrefFile)
         Logging(logFile, autopkgPrefFile)
         print("Required Keys:")
-        Logging("Required Keys:")
+        Logging(logFile, "Required Keys:")
         for requiredKey in args:
             Logging(logFile, requiredKey)
             print(requiredKey)
-        Logging(logFile, printLogLocation=True)
+        print(Logging(logFile, printLogLocation=True))
         sys.exit()
     # If it finds the keys, it checks to make sure that all the needed keys were found and write back to the console which ones
     # need to be added to the preference file.
@@ -148,7 +149,7 @@ def AutomationPreferences(*args):
             print(autopkgPrefFile)
             Logging(logFile, userPrefFile)
             Logging(logFile, autopkgPrefFile)
-            Logging(logFile, printLogLocation=True)
+            print(Logging(logFile, printLogLocation=True))
             sys.exit()
     # Finally returns the built dictionary with just the keys that are needed.
     return automationPrefs
