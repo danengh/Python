@@ -1,10 +1,32 @@
 #!/usr/local/bin/python3
 
+# Looks at the file created by patchUpdater.py and attempts to find a
+# patch management software title. If found, it will try and associate the
+# newpackage with the version in Jamf. It will then try to update a patch
+# policy within the patch management title.
+# Line 182 is where it is looking for the name of the policy with the pattern
+# "<software title> Update Test".
+# Copyright (C) 2020  Dan Engh
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# Version 1.0
+
 from AutomationToolsLib import Logging, AutomationPreferences, SlackNotification
 from datetime import date
 from xml.etree import ElementTree
 import requests
-from os import devnull
 from sys import exit
 
 
@@ -39,7 +61,7 @@ def AddPackageToDefinition(updatedSoftware):
     )
     if response.status_code != 200:
         Logging(logfile, "Error connecting to Jamf: " + str(response.status_code))
-        Logging(logfile, response.content)
+        Logging(logfile, str(response.content))
         exit()
     responseTree = ElementTree.fromstring(response.content)
     for software in updatedSoftware:
@@ -53,58 +75,79 @@ def AddPackageToDefinition(updatedSoftware):
                     auth=(jamfPrefs["API_USERNAME"], jamfPrefs["API_PASSWORD"]),
                     headers={"Accept": "application/xml"},
                 )
-                patchTitleTree = ElementTree.fromstring(patchTitleResponse.content)
-                if patchTitleTree[6][0][0].text == updatedSoftware[software]:
-                    for pkg in pkgList:
-                        if updatedSoftware[software] in pkg:
-                            xmlData = (
-                                "<patch_software_title><versions><version><software_version>"
-                                + updatedSoftware[software]
-                                + "</software_version><package><name>"
-                                + pkg
-                                + "</name></package></version></versions></patch_software_title>"
-                            )
-                            newResponse = requests.put(
-                                patchURL + "/id/" + responseTree[iterator][1].text,
-                                auth=(
-                                    jamfPrefs["API_USERNAME"],
-                                    jamfPrefs["API_PASSWORD"],
-                                ),
-                                data=xmlData,
-                                headers={"content-type": "application/xml"},
-                            )
-                            if newResponse.status_code != 201:
-                                Logging(
-                                    logfile,
-                                    "Update of "
-                                    + software
-                                    + " failed with error code: "
-                                    + str(newResponse.status_code),
-                                )
-                                Logging(logfile, newResponse.content)
-                            else:
-                                Logging(
-                                    logfile,
-                                    pkg
-                                    + " added to definition version "
-                                    + updatedSoftware[software],
-                                )
-                                UpdateTargetVersion(updatedSoftware[software])
-                            iterator = int(responseTree[0].text) + 50
+                if patchTitleResponse.status_code != 200:
+                    Logging(
+                        logfile,
+                        "There was an error in retrieving XML: "
+                        + str(response.status_code),
+                    )
+                    Logging(logfile, str(patchTitleResponse.content))
+                    Logging(logfile, patchURL + "/id/" + responseTree[iterator][1].text)
                 else:
-                    Logging(
-                        logfile,
-                        "Updated Version does not match the latest version in Jamf.",
-                    )
-                    Logging(
-                        logfile,
-                        "Jamf: "
-                        + str(patchTitleTree[6][0][0].text)
-                        + " != "
-                        + "Updated: "
-                        + updatedSoftware[software],
-                    )
-                    iterator = int(responseTree[0].text) + 50
+                    try:
+                        patchTitleTree = ElementTree.fromstring(
+                            patchTitleResponse.content
+                        )
+                        if patchTitleTree[6][0][0].text == updatedSoftware[software]:
+                            for pkg in pkgList:
+                                if updatedSoftware[software] in pkg:
+                                    xmlData = (
+                                        "<patch_software_title><versions><version><software_version>"
+                                        + updatedSoftware[software]
+                                        + "</software_version><package><name>"
+                                        + pkg
+                                        + "</name></package></version></versions></patch_software_title>"
+                                    )
+                                    newResponse = requests.put(
+                                        patchURL
+                                        + "/id/"
+                                        + responseTree[iterator][1].text,
+                                        auth=(
+                                            jamfPrefs["API_USERNAME"],
+                                            jamfPrefs["API_PASSWORD"],
+                                        ),
+                                        data=xmlData,
+                                        headers={"content-type": "application/xml"},
+                                    )
+                                    if newResponse.status_code != 201:
+                                        Logging(
+                                            logfile,
+                                            "Update of "
+                                            + software
+                                            + " failed with error code: "
+                                            + str(newResponse.status_code),
+                                        )
+                                        Logging(logfile, newResponse.content)
+                                    else:
+                                        Logging(
+                                            logfile,
+                                            pkg
+                                            + " added to definition version "
+                                            + updatedSoftware[software],
+                                        )
+                                        # UpdateTargetVersion(updatedSoftware[software])
+                                    iterator = int(responseTree[0].text) + 50
+                        else:
+                            Logging(
+                                logfile,
+                                "Updated Version does not match the latest version in Jamf.",
+                            )
+                            Logging(
+                                logfile,
+                                "Jamf: "
+                                + str(patchTitleTree[6][0][0].text)
+                                + " != "
+                                + "Updated: "
+                                + updatedSoftware[software],
+                            )
+                            iterator = int(responseTree[0].text) + 50
+                    except:
+                        Logging(logfile, "There was a problem with the XML content")
+                        Logging(logfile, str(patchTitleResponse.content))
+                        Logging(
+                            logfile, patchURL + "/id/" + responseTree[iterator][1].text
+                        )
+                        Logging(logfile, xmlData)
             iterator = iterator + 1
             if iterator == int(responseTree[0].text):
                 software_not_found = True
@@ -174,9 +217,9 @@ def UpdateTargetVersion(updatedSoftware):
                             + patchPolicyContent[counter][1].text
                             + " was not updated. Please update "
                             + patchPolicyContent[counter][1].text
-                            + " to `"
+                            + " to "
                             + updatedSoftware[software]
-                            + "` manually.",
+                            + " manually.",
                         )
                     else:
                         Logging(
