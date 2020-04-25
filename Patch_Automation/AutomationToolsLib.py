@@ -54,7 +54,7 @@ def Logging(filename, message="\n", printLogLocation=False):
         print("Log can be viewed at " + str(logPath))
     else:
         openLog = open(logPath / filename, "a+")
-        openLog.write(message + "\n")
+        openLog.write(str(message) + "\n")
         openLog.close()
 
 
@@ -70,6 +70,7 @@ def CreatePath(filepath, logpath):
 
 # Checks for plist of preferences and returns a dictionary of the required keys for the automation
 def AutomationPreferences(*args):
+    logFile = "automation_errors.log"
     currentUser = getpass.getuser()
     userPrefFile = (
         "/Users/"
@@ -168,4 +169,3 @@ def SlackNotification(logfile, message):
             logfile,
             "There was an error posting to Slack: " + str(slackPost.status_code),
         )
-
