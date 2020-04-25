@@ -1,6 +1,10 @@
 #!/usr/local/bin/python3
 
-# Identify new software uploaded to Jamf and notify a slack room.
+# 1) Identify new software uploaded to Jamf
+# 2) Push and pull from github repo to update software version in JSON
+# 3) Push new version through API to patch server with JSON file
+# 4) Notify a slack room.
+# JSON patch-only file is identified by "-patch.json"
 # Copyright (C) 2020  Dan Engh
 
 # This program is free software: you can redistribute it and/or modify
@@ -15,6 +19,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# Version 1.0
 
 import pathlib
 import subprocess
@@ -166,10 +171,10 @@ def GetPackageName(APIEndpoint, apiUser, apiPass, softwareIDList):
 # Function to get and create, if needed, the log file path and location.
 def GetFileLocation():
     currentUser = getuser()
-    umnPath = pathlib.Path("/Users/" + currentUser + "/Library")
-    logPath = umnPath / "Logs/Patch_Automation"
-    if not umnPath.exists():
-        os.mkdir(umnPath)
+    libraryPath = pathlib.Path("/Users/" + currentUser + "/Library")
+    logPath = libraryPath / "Logs/Patch_Automation"
+    if not logPath.exists():
+        os.mkdir(logPath)
     return logPath
 
 
@@ -197,22 +202,15 @@ def GithubActions(patchRepo, commit=None):
         )
 
 
-def GetPreferences(*args):
-    userPrefs = {}
-    for key in args:
-        userPrefs += AutomationPreferences(key)
-    return userPrefs
-
-
 # Updates the patch server with the updated JSON definition.
 def UpdatePatchserver(updSftwreDict, log):
     userPrefs = AutomationPreferences("PATCH_REPO", "PATCH_URL", "PATCH_TOKEN")
     gitRepo = userPrefs["PATCH_REPO"]
     patchURL = userPrefs["PATCH_URL"]
+    apiToken = userPrefs["PATCH_TOKEN"]
     # Make sure the endpoint is pointing to the correct URL for updating
     if "/api/v1/title" not in patchURL:
         patchURL = patchURL + "/api/v1/title"
-    apiToken = userPrefs["PATCH_TOKEN"]
     GithubActions(gitRepo)
     for software in updSftwreDict:
         jsonFilepath = UpdateJSON(software, updSftwreDict[software])
@@ -235,6 +233,8 @@ def UpdatePatchserver(updSftwreDict, log):
                     + str(patchResponse.status_code),
                 )
                 Logging(log, str(patchResponse.content))
+        else:
+            Logging(log, str(jsonFilepath) + " doesn't exist.")
     GithubActions(gitRepo, "commit")
 
 
@@ -251,7 +251,7 @@ def UpdateJSON(title, version):
         print("No patch repo set. Using default path: " + str(gitRepo))
     JSONFile = title + "-patch.json"
     if pathlib.Path.exists(gitRepo / JSONFile):
-        ModifyJSON(gitRepo / JSONFile, title, version)
+        ModifyJSON(gitRepo / JSONFile, title, version, logFile)
         SlackNotification(
             logFile,
             str(date.today())
@@ -267,7 +267,7 @@ def UpdateJSON(title, version):
     else:
         JSONFile = JSONFile.replace(" ", "%20")
         if pathlib.Path.exists(gitRepo / JSONFile):
-            ModifyJSON(gitRepo / JSONFile, title, version)
+            ModifyJSON(gitRepo / JSONFile, title, version, logFile)
             SlackNotification(
                 logFile,
                 str(date.today())
@@ -283,7 +283,7 @@ def UpdateJSON(title, version):
         else:
             JSONFile = JSONFile.replace("%20", "")
             if pathlib.Path.exists(gitRepo / JSONFile):
-                ModifyJSON(gitRepo / JSONFile, title, version)
+                ModifyJSON(gitRepo / JSONFile, title, version, logFile)
                 SlackNotification(
                     logFile,
                     str(date.today())
@@ -295,7 +295,9 @@ def UpdateJSON(title, version):
                     + title
                     + " has been updated on the patch server",
                 )
-                Logging(logFile, datetime.today() + ": " + JSONFile + " was updated.")
+                Logging(
+                    logFile, str(datetime.today()) + ": " + JSONFile + " was updated."
+                )
             else:
                 Logging(logFile, JSONFile + " does not exist.")
                 SlackNotification(
@@ -311,7 +313,7 @@ def UpdateJSON(title, version):
 
 
 # Modifies the json file with the updated version and date
-def ModifyJSON(file, title, newVersion):
+def ModifyJSON(file, title, newVersion, logFile):
     todayDate = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
     JSONFile = open(file, "r")
     JSONDict = json.load(JSONFile)
@@ -324,10 +326,23 @@ def ModifyJSON(file, title, newVersion):
             JSONDict[item] = todayDate
     for item in JSONDict.get("components")[0]:
         if item == "version":
-            JSONDict.get("components")[0][item] = newVersion
-    for appCritera in JSONDict.get("components")[0].get("criteria"):
-        if appCritera["value"] == oldVersion:
-            appCritera["value"] = newVersion
+            try:
+                JSONDict.get("components")[0][item] = newVersion
+            except:
+                Logging(
+                    logFile,
+                    "Unable to get object " + str(JSONDict.get("components")[0][item]),
+                )
+    try:
+        for appCritera in JSONDict.get("components")[0].get("criteria"):
+            if appCritera["value"] == oldVersion:
+                appCritera["value"] = newVersion
+    except:
+        Logging(
+            logFile,
+            "Unable to get object "
+            + str(appCritera in JSONDict.get("components")[0].get("criteria")),
+        )
     JSONFile = open(file, "w")
     json.dump(JSONDict, JSONFile)
     JSONFile.close()
