@@ -26,8 +26,15 @@
 from AutomationToolsLib import Logging, AutomationPreferences, SlackNotification
 from datetime import date
 from xml.etree import ElementTree
-import requests
 from sys import exit
+
+try:
+    import requests
+except:
+    print(
+        "The requests module is not installed. To install the request module, use the pip3 command: pip3 install requests"
+    )
+    exit
 
 
 def GetUpdatedSoftwareVersion():
