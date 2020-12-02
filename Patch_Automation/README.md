@@ -1,5 +1,5 @@
 # Patch Server Automation (BETA)
-Written in and compatible with Python 3.8
+Written in Python 3.8 and compatible with Python 3.8 and 3.9
 
 * This automation is designed to work with a Slack channel set up to recieve incoming webhooks.
 * This automation is designed to use preference files for jamf pro server, patch server, log location and slack room information.
