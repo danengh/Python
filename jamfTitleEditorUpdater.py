@@ -4,7 +4,7 @@ import requests
 import json
 import sys
 from datetime import datetime
-from UMNToolsLib import Logging, AutomationPreferences, SplunkHTTPHEC
+from AutomationToolsLib import Logging, AutomationPreferences, SplunkHTTPHEC
 
 
 def Authentication(url):
